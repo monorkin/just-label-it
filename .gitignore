@@ -1,0 +1,6 @@
+/bin/
+/dist/
+/jli
+jli.db
+jli.db-wal
+jli.db-shm

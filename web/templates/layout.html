@@ -1,0 +1,20 @@
+{{define "layout"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Just Label It</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  {{template "content" .}}
+  <script src="/static/js/stimulus.umd.min.js"></script>
+  <script src="/static/js/application.js"></script>
+  <script src="/static/js/controllers/auto_resize_controller.js"></script>
+  <script src="/static/js/controllers/description_controller.js"></script>
+  <script src="/static/js/controllers/navigation_controller.js"></script>
+  <script src="/static/js/controllers/label_input_controller.js"></script>
+  <script src="/static/js/controllers/timeline_controller.js"></script>
+</body>
+</html>
+{{end}}

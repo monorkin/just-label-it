@@ -1,0 +1,121 @@
+{{define "viewer.html"}}
+{{template "layout" .}}
+{{end}}
+
+{{define "content"}}
+{{if not .File}}
+<div class="empty-state">
+  <h1>No media files found</h1>
+  <p>Run this tool in a directory containing images, video, or audio files.</p>
+</div>
+{{else}}
+<div class="viewer" data-controller="navigation" data-navigation-prev-url-value="/files/{{.Nav.PrevID}}" data-navigation-next-url-value="/files/{{.Nav.NextID}}">
+  {{/* Header */}}
+  <header class="viewer-header">
+    <span class="file-path">{{.File.Path}}</span>
+    <span class="file-counter">{{.Nav.Index}} / {{.Nav.TotalCount}}</span>
+  </header>
+
+  {{/* Main content area with nav arrows */}}
+  <div class="viewer-body">
+    <a href="/files/{{.Nav.PrevID}}" class="nav-arrow nav-prev" title="Previous (Left arrow)">&larr;</a>
+
+    <div class="viewer-content">
+      {{if isTemporal .File.MediaType}}
+      {{/* Wrap media + timeline in one controller scope */}}
+      <div data-controller="timeline" data-timeline-file-id-value="{{.File.ID}}">
+        <div class="media-preview">
+          {{if isVideo .File.MediaType}}
+            <video src="/media/{{.File.Path}}" controls data-timeline-target="media"></video>
+          {{else}}
+            <audio src="/media/{{.File.Path}}" controls data-timeline-target="media"></audio>
+          {{end}}
+        </div>
+
+        <div class="timeline-section">
+          <div class="timeline-track" data-timeline-target="track" data-action="click->timeline#addKeyframe">
+            <div class="timeline-playhead" data-timeline-target="playhead"></div>
+            {{range .Keyframes}}
+            <div class="timeline-keyframe{{if .Pinned}} pinned{{end}}"
+                 data-timeline-target="keyframe"
+                 data-keyframe-id="{{.ID}}"
+                 data-timestamp-ms="{{.TimestampMs}}"
+                 data-pinned="{{.Pinned}}"
+                 data-action="click->timeline#selectKeyframe"
+                 title="{{.TimestampMs}}ms">
+            </div>
+            {{end}}
+          </div>
+
+          <div class="keyframe-detail" data-timeline-target="detail" style="display:none">
+            <div class="keyframe-detail-header">
+              <span data-timeline-target="detailTime"></span>
+              <button class="btn-delete" data-action="click->timeline#deleteKeyframe" data-timeline-target="deleteBtn">Delete</button>
+            </div>
+
+            <div class="label-section" data-controller="label-input"
+                 data-label-input-url-value=""
+                 data-timeline-target="labelSection">
+              <div class="label-tags" data-label-input-target="tags" data-timeline-target="detailLabels"></div>
+              <div class="label-input-wrapper">
+                <input type="text" placeholder="Add label..."
+                       data-label-input-target="input"
+                       data-action="input->label-input#search keydown->label-input#keydown"
+                       autocomplete="off">
+                <div class="label-suggestions" data-label-input-target="suggestions" style="display:none"></div>
+              </div>
+            </div>
+
+            <textarea placeholder="Keyframe description..."
+                      data-controller="auto-resize description"
+                      data-description-url-value=""
+                      data-timeline-target="detailDescription"
+                      data-action="input->auto-resize#resize input->description#save"
+                      rows="1"></textarea>
+          </div>
+        </div>
+      </div>
+      {{else}}
+      {{/* Image — no timeline */}}
+      <div class="media-preview">
+        <img src="/media/{{.File.Path}}" alt="{{.File.Path}}">
+      </div>
+      {{end}}
+
+      {{/* File labels */}}
+      <div class="label-section" data-controller="label-input"
+           data-label-input-url-value="/files/{{.File.ID}}/labels">
+        <h3>Labels</h3>
+        <div class="label-tags" data-label-input-target="tags">
+          {{range .Labels}}
+          <span class="label-tag" data-label-id="{{.ID}}">
+            {{.Name}}
+            <button class="label-remove" data-action="click->label-input#removeLabel" data-label-id="{{.ID}}">&times;</button>
+          </span>
+          {{end}}
+        </div>
+        <div class="label-input-wrapper">
+          <input type="text" placeholder="Add label..."
+                 data-label-input-target="input"
+                 data-action="input->label-input#search keydown->label-input#keydown"
+                 autocomplete="off">
+          <div class="label-suggestions" data-label-input-target="suggestions" style="display:none"></div>
+        </div>
+      </div>
+
+      {{/* File description */}}
+      <div class="description-section">
+        <h3>Description</h3>
+        <textarea placeholder="Describe this file..."
+                  data-controller="auto-resize description"
+                  data-description-url-value="/files/{{.File.ID}}/description"
+                  data-action="input->auto-resize#resize input->description#save"
+                  rows="2">{{.File.Description}}</textarea>
+      </div>
+    </div>
+
+    <a href="/files/{{.Nav.NextID}}" class="nav-arrow nav-next" title="Next (Right arrow)">&rarr;</a>
+  </div>
+</div>
+{{end}}
+{{end}}
