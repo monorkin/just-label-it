@@ -3,7 +3,7 @@ MODULE  := github.com/monorkin/just-label-it
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 
 GOFLAGS := -trimpath
-LDFLAGS := -s -w
+LDFLAGS := -s -w -X github.com/monorkin/just-label-it/cmd.Version=$(VERSION)
 
 PLATFORMS := \
 	linux/amd64 \
@@ -34,8 +34,9 @@ $(PLATFORMS):
 # --- Release ---
 
 .PHONY: release
-release: build-all ## Create a GitHub release (requires TAG, e.g. make release TAG=v0.1.0)
+release: ## Create a GitHub release (requires TAG, e.g. make release TAG=v0.1.0)
 	@if [ -z "$(TAG)" ]; then echo "Error: TAG is required. Usage: make release TAG=v0.1.0" >&2; exit 1; fi
+	$(MAKE) build-all VERSION=$(TAG)
 	@echo "Creating release $(TAG)..."
 	gh release create $(TAG) dist/* \
 		--title "$(TAG)" \

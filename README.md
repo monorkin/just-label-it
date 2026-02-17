@@ -1,8 +1,16 @@
 # Just Label It
 
-Just Label It, aka `jli`, is a CLI tool and interface to quickly label media files in a simple and comprehensible way.
+Just Label It, aka `jli`, is a CLI tool for quickly labeling images, video and audio files.
 
-Scan a directory of images, video, and audio files, then tag and describe them through a browser-based UI. Everything is stored in a local SQLite database. The binary is fully self-contained — no external dependencies, no build step, no runtime requirements.
+It's intentionally simple, just a single binary with an embedded web UI.
+
+- **Supported formats** — JPEG, PNG, GIF, WebP, AVIF, SVG, TIFF, BMP, MP4, WebM, MKV, AVI, MOV, MP3, WAV, OGG, FLAC, AAC, and more
+- **One directory = one project** — run `jli` in any directory to label all the media files within it
+- **Local storage** — everything saved to `jli.db` in the target directory
+- **Keyboard navigation** — Left/Right arrow keys to move between files
+- **Labels** — tag files with reusable labels, autocomplete from existing labels
+- **Descriptions** — free-text description per file, auto-saved as you type
+- **Keyframes** — for video and audio files, mark points in time with their own labels and descriptions
 
 ## Install
 
@@ -35,16 +43,6 @@ jli serve --port 8080 ~/photos
 |------|---------|-------------|
 | `--bind` | `127.0.0.1` | Address to bind the server to |
 | `--port` | `0` (auto) | Port to listen on |
-
-## Features
-
-- **Supported formats** — JPEG, PNG, GIF, WebP, AVIF, SVG, TIFF, BMP, MP4, WebM, MKV, AVI, MOV, MP3, WAV, OGG, FLAC, AAC, and more
-- **Labels** — tag files with reusable labels, autocomplete from existing labels
-- **Descriptions** — free-text description per file, auto-saved as you type
-- **Keyframes** — for video and audio files, mark points in time with their own labels and descriptions
-- **Keyboard navigation** — Left/Right arrow keys to move between files
-- **Single binary** — all web assets embedded, just download and run
-- **Local storage** — everything saved to `jli.db` in the target directory
 
 ## Building
 
