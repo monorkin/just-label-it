@@ -5,45 +5,43 @@
     static targets = ["input", "suggestions", "tags"]
     static values = { url: String }
 
-    connect() {
-      this._activeIndex = -1
-      this._suggestions = []
-      this._searchTimeout = null
-    }
+    #activeIndex = -1
+    #suggestions = []
+    #searchTimeout = null
 
     disconnect() {
-      clearTimeout(this._searchTimeout)
+      clearTimeout(this.#searchTimeout)
     }
 
     search() {
-      clearTimeout(this._searchTimeout)
+      clearTimeout(this.#searchTimeout)
       const query = this.inputTarget.value.trim()
       if (!query) {
-        this._hideSuggestions()
+        this.#hideSuggestions()
         return
       }
 
-      this._searchTimeout = setTimeout(() => {
-        this._fetchSuggestions(query)
+      this.#searchTimeout = setTimeout(() => {
+        this.#fetchSuggestions(query)
       }, 200)
     }
 
-    keydown(event) {
+    submitOrNavigate(event) {
       if (event.key === "Enter") {
         event.preventDefault()
-        if (this._activeIndex >= 0 && this._activeIndex < this._suggestions.length) {
-          this._addLabel(this._suggestions[this._activeIndex].name)
+        if (this.#activeIndex >= 0 && this.#activeIndex < this.#suggestions.length) {
+          this.#addLabel(this.#suggestions[this.#activeIndex].name)
         } else if (this.inputTarget.value.trim()) {
-          this._addLabel(this.inputTarget.value.trim())
+          this.#addLabel(this.inputTarget.value.trim())
         }
       } else if (event.key === "ArrowDown") {
         event.preventDefault()
-        this._moveSelection(1)
+        this.#moveSelection(1)
       } else if (event.key === "ArrowUp") {
         event.preventDefault()
-        this._moveSelection(-1)
+        this.#moveSelection(-1)
       } else if (event.key === "Escape") {
-        this._hideSuggestions()
+        this.#hideSuggestions()
       }
     }
 
@@ -60,7 +58,27 @@
       })
     }
 
-    _addLabel(name) {
+    preventBlur(event) {
+      event.preventDefault()
+    }
+
+    pickSuggestion(event) {
+      const index = parseInt(event.currentTarget.dataset.index)
+      this.#addLabel(this.#suggestions[index].name)
+    }
+
+    appendTag(label) {
+      // Don't add duplicate tags.
+      if (this.tagsTarget.querySelector(`[data-label-id="${label.ID}"]`)) return
+
+      const span = document.createElement("span")
+      span.className = "label-tag"
+      span.dataset.labelId = label.ID
+      span.innerHTML = `${this.#escapeHtml(label.Name)} <button class="label-remove" data-action="click->label-input#removeLabel" data-label-id="${label.ID}">&times;</button>`
+      this.tagsTarget.appendChild(span)
+    }
+
+    #addLabel(name) {
       const url = this.urlValue
       if (!url) return
 
@@ -71,80 +89,64 @@
       })
         .then(r => r.json())
         .then(label => {
-          this._appendTag(label)
+          this.appendTag(label)
           this.inputTarget.value = ""
-          this._hideSuggestions()
+          this.#hideSuggestions()
         })
     }
 
-    _appendTag(label) {
-      // Don't add duplicate tags.
-      if (this.tagsTarget.querySelector(`[data-label-id="${label.ID}"]`)) return
-
-      const span = document.createElement("span")
-      span.className = "label-tag"
-      span.dataset.labelId = label.ID
-      span.innerHTML = `${this._escapeHtml(label.Name)} <button class="label-remove" data-action="click->label-input#removeLabel" data-label-id="${label.ID}">&times;</button>`
-      this.tagsTarget.appendChild(span)
-    }
-
-    _fetchSuggestions(query) {
+    #fetchSuggestions(query) {
       fetch(`/api/labels?q=${encodeURIComponent(query)}`)
         .then(r => r.json())
         .then(labels => {
-          this._suggestions = labels
-          this._activeIndex = -1
-          this._renderSuggestions(query)
+          this.#suggestions = labels
+          this.#activeIndex = -1
+          this.#renderSuggestions(query)
         })
     }
 
-    _renderSuggestions(query) {
-      if (this._suggestions.length === 0) {
-        this._hideSuggestions()
+    #renderSuggestions(query) {
+      if (this.#suggestions.length === 0) {
+        this.#hideSuggestions()
         return
       }
 
-      const html = this._suggestions.map((label, i) => {
-        const highlighted = this._highlight(label.Name, query)
-        const cls = i === this._activeIndex ? "label-suggestion active" : "label-suggestion"
-        return `<div class="${cls}" data-index="${i}" onmousedown="event.preventDefault()" onclick="this.closest('[data-controller~=label-input]').__stimulusLabelClick(${i})">${highlighted}</div>`
+      const html = this.#suggestions.map((label, i) => {
+        const highlighted = this.#highlight(label.Name, query)
+        const cls = i === this.#activeIndex ? "label-suggestion active" : "label-suggestion"
+        return `<div class="${cls}" data-index="${i}" data-action="mousedown->label-input#preventBlur click->label-input#pickSuggestion">${highlighted}</div>`
       }).join("")
 
       this.suggestionsTarget.innerHTML = html
       this.suggestionsTarget.style.display = "block"
-
-      // Store click handler on element for the inline onclick.
-      this.element.__stimulusLabelClick = (index) => {
-        this._addLabel(this._suggestions[index].name)
-      }
     }
 
-    _hideSuggestions() {
+    #hideSuggestions() {
       this.suggestionsTarget.style.display = "none"
-      this._suggestions = []
-      this._activeIndex = -1
+      this.#suggestions = []
+      this.#activeIndex = -1
     }
 
-    _moveSelection(direction) {
-      if (this._suggestions.length === 0) return
-      this._activeIndex = Math.max(-1, Math.min(this._suggestions.length - 1, this._activeIndex + direction))
+    #moveSelection(direction) {
+      if (this.#suggestions.length === 0) return
+      this.#activeIndex = Math.max(-1, Math.min(this.#suggestions.length - 1, this.#activeIndex + direction))
 
       const items = this.suggestionsTarget.querySelectorAll(".label-suggestion")
       items.forEach((el, i) => {
-        el.classList.toggle("active", i === this._activeIndex)
+        el.classList.toggle("active", i === this.#activeIndex)
       })
     }
 
-    _highlight(text, query) {
+    #highlight(text, query) {
       const idx = text.toLowerCase().indexOf(query.toLowerCase())
-      if (idx === -1) return this._escapeHtml(text)
+      if (idx === -1) return this.#escapeHtml(text)
       const before = text.slice(0, idx)
       const match = text.slice(idx, idx + query.length)
       const after = text.slice(idx + query.length)
-      return `${this._escapeHtml(before)}<mark>${this._escapeHtml(match)}</mark>${this._escapeHtml(after)}`
+      return `${this.#escapeHtml(before)}<mark>${this.#escapeHtml(match)}</mark>${this.#escapeHtml(after)}`
     }
 
-    _escapeHtml(str) {
+    #escapeHtml(str) {
       const div = document.createElement("div")
       div.textContent = str
       return div.innerHTML

@@ -5,89 +5,73 @@
     static targets = ["track", "playhead", "keyframe", "detail", "detailTime", "detailLabels", "detailDescription", "deleteBtn", "labelSection", "media"]
     static values = { fileId: Number }
 
+    #selectedId = null
+    #duration = 0
+    #scrubbing = false
+    #wasPlaying = false
+
     connect() {
-      this._selectedId = null
-      this._duration = 0
-      this._animFrame = null
-      this._scrubbing = false
-
-      // If we have a media target, follow playback.
-      if (this.hasMediaTarget) {
-        this._onLoadedMetadata = () => {
-          this._duration = this.mediaTarget.duration * 1000
-          this._positionKeyframes()
-          this._autoSelectFirst()
-        }
-        this._onTimeUpdate = () => this._updatePlayhead()
-
-        this.mediaTarget.addEventListener("loadedmetadata", this._onLoadedMetadata)
-        this.mediaTarget.addEventListener("timeupdate", this._onTimeUpdate)
-
-        // If metadata is already loaded.
-        if (this.mediaTarget.duration) {
-          this._duration = this.mediaTarget.duration * 1000
-          this._positionKeyframes()
-          this._autoSelectFirst()
-        }
+      // If metadata is already loaded (cached media).
+      if (this.hasMediaTarget && this.mediaTarget.duration) {
+        this.#duration = this.mediaTarget.duration * 1000
+        this.#positionKeyframes()
+        this.#autoSelectFirst()
       }
-
-      // Bind scrub handlers for pointer drag on the track.
-      this._onPointerMove = this._scrubMove.bind(this)
-      this._onPointerUp = this._scrubEnd.bind(this)
     }
 
-    disconnect() {
-      if (this.hasMediaTarget) {
-        this.mediaTarget.removeEventListener("loadedmetadata", this._onLoadedMetadata)
-        this.mediaTarget.removeEventListener("timeupdate", this._onTimeUpdate)
-      }
-      document.removeEventListener("pointermove", this._onPointerMove)
-      document.removeEventListener("pointerup", this._onPointerUp)
-      cancelAnimationFrame(this._animFrame)
+    // --- Media events (bound via data-action on <video>/<audio>) ---
+
+    initializeTimeline() {
+      this.#duration = this.mediaTarget.duration * 1000
+      this.#positionKeyframes()
+      this.#autoSelectFirst()
+    }
+
+    updatePlayhead() {
+      if (!this.hasPlayheadTarget || !this.hasMediaTarget || !this.#duration) return
+      const currentMs = this.mediaTarget.currentTime * 1000
+      const pct = (currentMs / this.#duration) * 100
+      this.playheadTarget.style.left = pct + "%"
     }
 
     // --- Scrubbing (click / drag on timeline track) ---
 
-    scrubStart(event) {
+    startScrub(event) {
       // Ignore clicks on keyframe dots.
       if (event.target.classList.contains("timeline-keyframe")) return
-      if (!this._duration) return
+      if (!this.#duration) return
 
-      this._scrubbing = true
-      this._wasPlaying = !this.mediaTarget.paused
+      this.#scrubbing = true
+      this.#wasPlaying = !this.mediaTarget.paused
       this.mediaTarget.pause()
 
-      this._seekToPointer(event)
+      this.#seekToPointer(event)
       this.trackTarget.setPointerCapture(event.pointerId)
-      document.addEventListener("pointermove", this._onPointerMove)
-      document.addEventListener("pointerup", this._onPointerUp)
     }
 
-    _scrubMove(event) {
-      if (!this._scrubbing) return
-      this._seekToPointer(event)
+    scrub(event) {
+      if (!this.#scrubbing) return
+      this.#seekToPointer(event)
     }
 
-    _scrubEnd(event) {
-      if (!this._scrubbing) return
-      this._scrubbing = false
-      document.removeEventListener("pointermove", this._onPointerMove)
-      document.removeEventListener("pointerup", this._onPointerUp)
-      if (this._wasPlaying) this.mediaTarget.play()
+    endScrub() {
+      if (!this.#scrubbing) return
+      this.#scrubbing = false
+      if (this.#wasPlaying) this.mediaTarget.play()
     }
 
-    _seekToPointer(event) {
+    #seekToPointer(event) {
       const rect = this.trackTarget.getBoundingClientRect()
       const x = event.clientX - rect.left
       const ratio = Math.max(0, Math.min(1, x / rect.width))
-      this.mediaTarget.currentTime = (ratio * this._duration) / 1000
-      this._updatePlayhead()
+      this.mediaTarget.currentTime = (ratio * this.#duration) / 1000
+      this.updatePlayhead()
     }
 
     // --- Keyframe creation (separate button) ---
 
     addKeyframe() {
-      if (!this._duration || !this.hasMediaTarget) return
+      if (!this.#duration || !this.hasMediaTarget) return
       const timestampMs = Math.round(this.mediaTarget.currentTime * 1000)
 
       fetch(`/files/${this.fileIdValue}/keyframes`, {
@@ -108,15 +92,15 @@
           dot.dataset.action = "click->timeline#selectKeyframe"
           dot.title = kf.TimestampMs + "ms"
           this.trackTarget.appendChild(dot)
-          this._positionKeyframes()
-          this._selectKeyframe(kf.ID)
+          this.#positionKeyframes()
+          this.#selectKeyframe(kf.ID)
         })
     }
 
     selectKeyframe(event) {
       event.stopPropagation()
       const id = parseInt(event.currentTarget.dataset.keyframeId)
-      this._selectKeyframe(id)
+      this.#selectKeyframe(id)
 
       // Seek media to keyframe time.
       if (this.hasMediaTarget) {
@@ -126,32 +110,32 @@
     }
 
     deleteKeyframe() {
-      if (!this._selectedId) return
+      if (!this.#selectedId) return
 
-      const kfEl = this._findKeyframeEl(this._selectedId)
+      const kfEl = this.#findKeyframeEl(this.#selectedId)
       if (kfEl && kfEl.dataset.pinned === "true") return
 
-      fetch(`/keyframes/${this._selectedId}`, { method: "DELETE" }).then(r => {
+      fetch(`/keyframes/${this.#selectedId}`, { method: "DELETE" }).then(r => {
         if (r.ok) {
           if (kfEl) kfEl.remove()
-          this._selectedId = null
+          this.#selectedId = null
           if (this.hasDetailTarget) this.detailTarget.style.display = "none"
         }
       })
     }
 
-    _selectKeyframe(id) {
+    #selectKeyframe(id) {
       // Sync current keyframe state back to data attributes before switching.
-      this._syncCurrentKeyframe()
+      this.#syncCurrentKeyframe()
 
-      this._selectedId = id
+      this.#selectedId = id
 
       // Highlight the selected keyframe.
       this.keyframeTargets.forEach(el => {
         el.classList.toggle("selected", parseInt(el.dataset.keyframeId) === id)
       })
 
-      const kfEl = this._findKeyframeEl(id)
+      const kfEl = this.#findKeyframeEl(id)
       if (!kfEl) return
 
       const isPinned = kfEl.dataset.pinned === "true"
@@ -162,7 +146,7 @@
         this.detailTarget.style.display = ""
       }
       if (this.hasDetailTimeTarget) {
-        this.detailTimeTarget.textContent = this._formatTime(ms)
+        this.detailTimeTarget.textContent = this.#formatTime(ms)
       }
       if (this.hasDeleteBtnTarget) {
         this.deleteBtnTarget.style.display = isPinned ? "none" : ""
@@ -184,12 +168,12 @@
         }
       }
 
-      // Fetch keyframe details (labels + description).
-      this._loadKeyframeDetail(id)
+      // Load keyframe details (labels + description).
+      this.#loadKeyframeDetail(id)
     }
 
-    _loadKeyframeDetail(id) {
-      const kfEl = this._findKeyframeEl(id)
+    #loadKeyframeDetail(id) {
+      const kfEl = this.#findKeyframeEl(id)
       if (!kfEl) return
 
       // Load description from data attribute.
@@ -210,7 +194,7 @@
             : null
           labels.forEach(label => {
             if (labelController) {
-              labelController._appendTag(label)
+              labelController.appendTag(label)
             }
           })
         } catch (e) {
@@ -219,17 +203,17 @@
       }
     }
 
-    _autoSelectFirst() {
-      if (this._selectedId) return
+    #autoSelectFirst() {
+      if (this.#selectedId) return
       if (this.keyframeTargets.length > 0) {
         const firstId = parseInt(this.keyframeTargets[0].dataset.keyframeId)
-        this._selectKeyframe(firstId)
+        this.#selectKeyframe(firstId)
       }
     }
 
-    _syncCurrentKeyframe() {
-      if (!this._selectedId) return
-      const kfEl = this._findKeyframeEl(this._selectedId)
+    #syncCurrentKeyframe() {
+      if (!this.#selectedId) return
+      const kfEl = this.#findKeyframeEl(this.#selectedId)
       if (!kfEl) return
 
       // Sync description.
@@ -248,27 +232,20 @@
       }
     }
 
-    _findKeyframeEl(id) {
+    #findKeyframeEl(id) {
       return this.keyframeTargets.find(el => parseInt(el.dataset.keyframeId) === id)
     }
 
-    _positionKeyframes() {
-      if (!this._duration) return
+    #positionKeyframes() {
+      if (!this.#duration) return
       this.keyframeTargets.forEach(el => {
         const ms = parseInt(el.dataset.timestampMs)
-        const pct = (ms / this._duration) * 100
+        const pct = (ms / this.#duration) * 100
         el.style.left = pct + "%"
       })
     }
 
-    _updatePlayhead() {
-      if (!this.hasPlayheadTarget || !this.hasMediaTarget || !this._duration) return
-      const currentMs = this.mediaTarget.currentTime * 1000
-      const pct = (currentMs / this._duration) * 100
-      this.playheadTarget.style.left = pct + "%"
-    }
-
-    _formatTime(ms) {
+    #formatTime(ms) {
       const totalSec = Math.floor(ms / 1000)
       const min = Math.floor(totalSec / 60)
       const sec = totalSec % 60

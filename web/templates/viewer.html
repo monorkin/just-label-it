@@ -9,7 +9,7 @@
   <p>Run this tool in a directory containing images, video, or audio files.</p>
 </div>
 {{else}}
-<div class="viewer" data-controller="navigation" data-navigation-prev-url-value="/files/{{.Nav.PrevID}}" data-navigation-next-url-value="/files/{{.Nav.NextID}}">
+<div class="viewer" data-controller="navigation" data-navigation-prev-url-value="/files/{{.Nav.PrevID}}" data-navigation-next-url-value="/files/{{.Nav.NextID}}" data-action="keydown@document->navigation#navigate">
   {{/* Header */}}
   <header class="viewer-header">
     <span class="file-path">{{.File.Path}}</span>
@@ -26,14 +26,14 @@
       <div data-controller="timeline" data-timeline-file-id-value="{{.File.ID}}">
         <div class="media-preview">
           {{if isVideo .File.MediaType}}
-            <video src="/media/{{.File.Path}}" controls data-timeline-target="media"></video>
+            <video src="/media/{{.File.Path}}" controls data-timeline-target="media" data-action="loadedmetadata->timeline#initializeTimeline timeupdate->timeline#updatePlayhead"></video>
           {{else}}
-            <audio src="/media/{{.File.Path}}" controls data-timeline-target="media"></audio>
+            <audio src="/media/{{.File.Path}}" controls data-timeline-target="media" data-action="loadedmetadata->timeline#initializeTimeline timeupdate->timeline#updatePlayhead"></audio>
           {{end}}
         </div>
 
         <div class="timeline-section">
-          <div class="timeline-track" data-timeline-target="track" data-action="pointerdown->timeline#scrubStart">
+          <div class="timeline-track" data-timeline-target="track" data-action="pointerdown->timeline#startScrub pointermove@document->timeline#scrub pointerup@document->timeline#endScrub">
             <div class="timeline-playhead" data-timeline-target="playhead"></div>
             {{range .Keyframes}}
             <div class="timeline-keyframe{{if .Pinned}} pinned{{end}}"
@@ -65,7 +65,7 @@
               <div class="label-input-wrapper">
                 <input type="text" placeholder="Add label..."
                        data-label-input-target="input"
-                       data-action="input->label-input#search keydown->label-input#keydown"
+                       data-action="input->label-input#search keydown->label-input#submitOrNavigate"
                        autocomplete="off">
                 <div class="label-suggestions" data-label-input-target="suggestions" style="display:none"></div>
               </div>
@@ -102,7 +102,7 @@
         <div class="label-input-wrapper">
           <input type="text" placeholder="Add label..."
                  data-label-input-target="input"
-                 data-action="input->label-input#search keydown->label-input#keydown"
+                 data-action="input->label-input#search keydown->label-input#submitOrNavigate"
                  autocomplete="off">
           <div class="label-suggestions" data-label-input-target="suggestions" style="display:none"></div>
         </div>

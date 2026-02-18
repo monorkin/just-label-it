@@ -43,6 +43,9 @@ The database file `jli.db` is created in the target directory.
 - **Error handling**. Always wrap with context: `fmt.Errorf("fetching media file %d: %w", id, err)`. Never swallow errors.
 - **No interfaces** unless there are two implementations.
 - **Frontend**: Stimulus.js (vendored UMD), no build step. Controllers are plain JS IIFEs that register on `window.StimulusApp`.
+  - Use `#` for private fields and methods, not `_` prefix.
+  - Action names describe what the action does, not when it triggers (e.g. `submitOrNavigate`, not `keydown`; `navigate`, not `onClick`).
+  - Bindall event listeners via `data-action` attributes in HTML, not `addEventListener` in JS. Use `@document` / `@window` scoping for global events (e.g. `keydown@document->navigation#navigate`).
 
 ## Key design decisions
 

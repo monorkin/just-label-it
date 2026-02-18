@@ -4,22 +4,20 @@
   class DescriptionController extends Controller {
     static values = { url: String }
 
-    connect() {
-      this._timeout = null
-    }
+    #timeout = null
 
     disconnect() {
-      clearTimeout(this._timeout)
+      clearTimeout(this.#timeout)
     }
 
     save() {
-      clearTimeout(this._timeout)
-      this._timeout = setTimeout(() => {
-        this._persist()
+      clearTimeout(this.#timeout)
+      this.#timeout = setTimeout(() => {
+        this.#persist()
       }, 500)
     }
 
-    _persist() {
+    #persist() {
       const url = this.urlValue
       if (!url) return
 
