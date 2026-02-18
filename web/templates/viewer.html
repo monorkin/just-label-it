@@ -41,6 +41,8 @@
                  data-keyframe-id="{{.ID}}"
                  data-timestamp-ms="{{.TimestampMs}}"
                  data-pinned="{{.Pinned}}"
+                 data-description="{{.Description}}"
+                 data-labels="{{labelsJSON .Labels}}"
                  data-action="click->timeline#selectKeyframe"
                  title="{{.TimestampMs}}ms">
             </div>

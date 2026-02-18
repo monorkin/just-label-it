@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"html/template"
 	"io/fs"
 	"log"
@@ -91,6 +92,13 @@ func templateFuncs() template.FuncMap {
 		"isImage": func(mediaType string) bool { return mediaType == "image" },
 		"isTemporal": func(mediaType string) bool {
 			return mediaType == "video" || mediaType == "audio"
+		},
+		"labelsJSON": func(labels []db.Label) string {
+			if labels == nil {
+				return "[]"
+			}
+			b, _ := json.Marshal(labels)
+			return string(b)
 		},
 	}
 }

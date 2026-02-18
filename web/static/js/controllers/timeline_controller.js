@@ -16,6 +16,7 @@
         this._onLoadedMetadata = () => {
           this._duration = this.mediaTarget.duration * 1000
           this._positionKeyframes()
+          this._autoSelectFirst()
         }
         this._onTimeUpdate = () => this._updatePlayhead()
 
@@ -26,6 +27,7 @@
         if (this.mediaTarget.duration) {
           this._duration = this.mediaTarget.duration * 1000
           this._positionKeyframes()
+          this._autoSelectFirst()
         }
       }
 
@@ -101,6 +103,8 @@
           dot.dataset.keyframeId = kf.ID
           dot.dataset.timestampMs = kf.TimestampMs
           dot.dataset.pinned = "false"
+          dot.dataset.description = ""
+          dot.dataset.labels = "[]"
           dot.dataset.action = "click->timeline#selectKeyframe"
           dot.title = kf.TimestampMs + "ms"
           this.trackTarget.appendChild(dot)
@@ -137,6 +141,9 @@
     }
 
     _selectKeyframe(id) {
+      // Sync current keyframe state back to data attributes before switching.
+      this._syncCurrentKeyframe()
+
       this._selectedId = id
 
       // Highlight the selected keyframe.
@@ -182,15 +189,62 @@
     }
 
     _loadKeyframeDetail(id) {
-      // We don't have a dedicated endpoint, so we reconstruct from what we know.
-      // For a full implementation, we'd add a GET /keyframes/{id} endpoint.
-      // For now, we reset the UI and let the user type.
+      const kfEl = this._findKeyframeEl(id)
+      if (!kfEl) return
+
+      // Load description from data attribute.
+      if (this.hasDetailDescriptionTarget) {
+        this.detailDescriptionTarget.value = kfEl.dataset.description || ""
+        // Trigger auto-resize without firing input (which would trigger a save).
+        const resizeCtrl = this.application.getControllerForElementAndIdentifier(this.detailDescriptionTarget, "auto-resize")
+        if (resizeCtrl) resizeCtrl.resize()
+      }
+
+      // Load labels from data attribute.
       if (this.hasDetailLabelsTarget) {
         this.detailLabelsTarget.innerHTML = ""
+        try {
+          const labels = JSON.parse(kfEl.dataset.labels || "[]")
+          const labelController = this.hasLabelSectionTarget
+            ? this.application.getControllerForElementAndIdentifier(this.labelSectionTarget, "label-input")
+            : null
+          labels.forEach(label => {
+            if (labelController) {
+              labelController._appendTag(label)
+            }
+          })
+        } catch (e) {
+          // Ignore parse errors.
+        }
       }
+    }
+
+    _autoSelectFirst() {
+      if (this._selectedId) return
+      if (this.keyframeTargets.length > 0) {
+        const firstId = parseInt(this.keyframeTargets[0].dataset.keyframeId)
+        this._selectKeyframe(firstId)
+      }
+    }
+
+    _syncCurrentKeyframe() {
+      if (!this._selectedId) return
+      const kfEl = this._findKeyframeEl(this._selectedId)
+      if (!kfEl) return
+
+      // Sync description.
       if (this.hasDetailDescriptionTarget) {
-        this.detailDescriptionTarget.value = ""
-        this.detailDescriptionTarget.style.height = "auto"
+        kfEl.dataset.description = this.detailDescriptionTarget.value
+      }
+
+      // Sync labels from the tags container.
+      if (this.hasDetailLabelsTarget) {
+        const tags = this.detailLabelsTarget.querySelectorAll(".label-tag")
+        const labels = Array.from(tags).map(tag => ({
+          ID: parseInt(tag.dataset.labelId),
+          Name: tag.childNodes[0].textContent.trim()
+        }))
+        kfEl.dataset.labels = JSON.stringify(labels)
       }
     }
 
