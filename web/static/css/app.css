@@ -157,6 +157,8 @@ html, body {
   border-radius: 4px;
   cursor: pointer;
   margin-bottom: 12px;
+  touch-action: none;
+  user-select: none;
 }
 
 .timeline-playhead {
@@ -195,6 +197,29 @@ html, body {
 .timeline-keyframe.selected {
   box-shadow: 0 0 0 3px var(--accent);
   transform: translate(-50%, -50%) scale(1.2);
+}
+
+/* Timeline actions */
+.timeline-actions {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.btn-add-keyframe {
+  background: none;
+  border: 1px solid var(--success);
+  color: var(--success);
+  padding: 4px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-add-keyframe:hover {
+  background: var(--success);
+  color: var(--bg);
 }
 
 /* Keyframe detail panel */

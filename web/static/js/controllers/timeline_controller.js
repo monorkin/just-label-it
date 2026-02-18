@@ -9,6 +9,7 @@
       this._selectedId = null
       this._duration = 0
       this._animFrame = null
+      this._scrubbing = false
 
       // If we have a media target, follow playback.
       if (this.hasMediaTarget) {
@@ -27,6 +28,10 @@
           this._positionKeyframes()
         }
       }
+
+      // Bind scrub handlers for pointer drag on the track.
+      this._onPointerMove = this._scrubMove.bind(this)
+      this._onPointerUp = this._scrubEnd.bind(this)
     }
 
     disconnect() {
@@ -34,18 +39,54 @@
         this.mediaTarget.removeEventListener("loadedmetadata", this._onLoadedMetadata)
         this.mediaTarget.removeEventListener("timeupdate", this._onTimeUpdate)
       }
+      document.removeEventListener("pointermove", this._onPointerMove)
+      document.removeEventListener("pointerup", this._onPointerUp)
       cancelAnimationFrame(this._animFrame)
     }
 
-    addKeyframe(event) {
-      // Don't add if clicking on an existing keyframe.
-      if (event.target.classList.contains("timeline-keyframe")) return
+    // --- Scrubbing (click / drag on timeline track) ---
 
+    scrubStart(event) {
+      // Ignore clicks on keyframe dots.
+      if (event.target.classList.contains("timeline-keyframe")) return
       if (!this._duration) return
+
+      this._scrubbing = true
+      this._wasPlaying = !this.mediaTarget.paused
+      this.mediaTarget.pause()
+
+      this._seekToPointer(event)
+      this.trackTarget.setPointerCapture(event.pointerId)
+      document.addEventListener("pointermove", this._onPointerMove)
+      document.addEventListener("pointerup", this._onPointerUp)
+    }
+
+    _scrubMove(event) {
+      if (!this._scrubbing) return
+      this._seekToPointer(event)
+    }
+
+    _scrubEnd(event) {
+      if (!this._scrubbing) return
+      this._scrubbing = false
+      document.removeEventListener("pointermove", this._onPointerMove)
+      document.removeEventListener("pointerup", this._onPointerUp)
+      if (this._wasPlaying) this.mediaTarget.play()
+    }
+
+    _seekToPointer(event) {
       const rect = this.trackTarget.getBoundingClientRect()
       const x = event.clientX - rect.left
       const ratio = Math.max(0, Math.min(1, x / rect.width))
-      const timestampMs = Math.round(ratio * this._duration)
+      this.mediaTarget.currentTime = (ratio * this._duration) / 1000
+      this._updatePlayhead()
+    }
+
+    // --- Keyframe creation (separate button) ---
+
+    addKeyframe() {
+      if (!this._duration || !this.hasMediaTarget) return
+      const timestampMs = Math.round(this.mediaTarget.currentTime * 1000)
 
       fetch(`/files/${this.fileIdValue}/keyframes`, {
         method: "POST",

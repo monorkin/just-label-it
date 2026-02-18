@@ -33,7 +33,7 @@
         </div>
 
         <div class="timeline-section">
-          <div class="timeline-track" data-timeline-target="track" data-action="click->timeline#addKeyframe">
+          <div class="timeline-track" data-timeline-target="track" data-action="pointerdown->timeline#scrubStart">
             <div class="timeline-playhead" data-timeline-target="playhead"></div>
             {{range .Keyframes}}
             <div class="timeline-keyframe{{if .Pinned}} pinned{{end}}"
@@ -45,6 +45,9 @@
                  title="{{.TimestampMs}}ms">
             </div>
             {{end}}
+          </div>
+          <div class="timeline-actions">
+            <button class="btn-add-keyframe" data-action="click->timeline#addKeyframe">+ Add Keyframe</button>
           </div>
 
           <div class="keyframe-detail" data-timeline-target="detail" style="display:none">
