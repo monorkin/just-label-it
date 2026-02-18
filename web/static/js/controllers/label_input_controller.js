@@ -49,13 +49,13 @@
 
     removeLabel(event) {
       const labelId = event.currentTarget.dataset.labelId
+      const tag = event.currentTarget.closest(".label-tag")
       const url = this.urlValue
       if (!url) return
 
       fetch(`${url}/${labelId}`, { method: "DELETE" }).then(response => {
-        if (response.ok) {
-          const tag = event.currentTarget.closest(".label-tag")
-          if (tag) tag.remove()
+        if (response.ok && tag) {
+          tag.remove()
         }
       })
     }
